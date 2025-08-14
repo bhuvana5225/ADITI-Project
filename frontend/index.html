@@ -1,1 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A.D.I.T.I. - AI-Powered Credit Risk Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f0f4f8; background-image: radial-gradient(circle at top left, #e0e7ff, transparent 40%), radial-gradient(circle at bottom right, #fde2e4, transparent 50%); background-attachment: fixed; }
+        .card { background-color: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px) saturate(150%); -webkit-backdrop-filter: blur(12px) saturate(150%); border: 1px solid rgba(255, 255, 255, 0.3); animation: fadeIn 0.5s ease-in-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        .chat-bubble-bot { background-color: #e5e7eb; color: #1f2937; border-radius: 20px 20px 20px 5px; }
+        .chat-bubble-user { background-color: #2563eb; color: white; border-radius: 20px 20px 5px 20px; }
+        .action-button { transition: all 0.2s ease-in-out; }
+        .action-button:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.1); }
+        .typing-indicator span { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: #9ca3af; animation: bounce 1.4s infinite both; }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); } }
+        .gemini-button { background: linear-gradient(45deg, #4f46e5, #9333ea); }
+        .progress-bar { background-color: #e5e7eb; border-radius: 9999px; overflow: hidden; }
+        .progress-bar-inner { height: 100%; border-radius: 9999px; transition: width 1s ease-in-out .5s; }
+        .spinner { width: 24px; height: 24px; border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .needle { transform-origin: center bottom; transition: transform 1.2s cubic-bezier(0.23, 1, 0.32, 1); transform: rotate(-90deg); }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
 
+    <div id="loginView" class="w-full max-w-md mx-auto">
+        <div class="card p-8 rounded-2xl shadow-2xl">
+            <div class="text-center mb-10">
+                <h1 class="text-4xl font-extrabold text-blue-600">A.D.I.T.I.</h1>
+                <p class="text-gray-600 mt-2">Welcome to the future of credit assessment.</p>
+            </div>
+            <div class="space-y-4">
+                <button id="loginCustomerBtn" class="action-button group w-full flex items-center justify-center bg-blue-600 text-white font-bold py-4 px-6 rounded-lg shadow-md hover:bg-blue-700">
+                    <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                    Login as Customer
+                </button>
+                <button id="loginBankBtn" class="action-button group w-full flex items-center justify-center bg-gray-800 text-white font-bold py-4 px-6 rounded-lg shadow-md hover:bg-gray-900">
+                    <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                    Login as Bank Employee
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="app" class="container mx-auto max-w-6xl hidden">
+        <header class="relative text-center mb-8">
+            <h1 class="text-4xl font-extrabold text-blue-600">A.D.I.T.I.</h1>
+            <p class="text-gray-600 mt-1" id="header-subtitle">Alternative Data Insights & Trust Index</p>
+            <button id="logoutBtn" class="absolute top-0 right-0 bg-red-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-red-600 transition duration-300">Logout</button>
+        </header>
+        <main>
+            <div id="customerView" class="hidden"></div>
+            <div id="bankView" class="hidden"></div>
+        </main>
+    </div>
+
+<script>
+    // --- DOM Elements ---
+    const loginView = document.getElementById('loginView');
+    const appView = document.getElementById('app');
+    const loginCustomerBtn = document.getElementById('loginCustomerBtn');
+    const loginBankBtn = document.getElementById('loginBankBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const customerView = document.getElementById('customerView');
+    const bankView = document.getElementById('bankView');
+    const headerSubtitle = document.getElementById('header-subtitle');
+    let activityChart;
+    
+    // --- State Management ---
+    let lastCompletedAssessment = null;
+    let userAnswers = [];
+    let riskFactors = [];
+    
+    // --- Data & Core Logic ---
+    const questions = [
+        {
+            id: "loan_goal_value",
+            question: "Welcome! I'm A.D.I.T.I. To assess your credit profile, I'll ask a few simple questions. Let's start. What's your primary goal for seeking this loan?",
+            options: [
+                { text: "To start or expand a business", value: 1.0, risk: "Productive Use of Capital" },
+                { text: "For education or a skill course", value: 0.8, risk: "Investment in Self" },
+                { text: "For a personal emergency", value: 0.4, risk: "Medium Financial Stress" },
+                { text: "To buy a luxury item", value: 0.1, risk: "Discretionary Spending" }
+            ]
+        },
+        { 
+            id: "utility_on_time",
+            question: "Thinking about your last 12 monthly bills (like electricity, rent), how many were paid perfectly on time?",
+            options: [
+                { text: "All 12 bills", value: 12 },
+                { text: "10 to 11 bills", value: 10 },
+                { text: "8 to 9 bills", value: 8 },
+                { text: "7 bills or less", value: 6 }
+            ]
+        },
+        {
+            id: "sim_age_months",
+            question: "How long have you been using your current primary mobile number?",
+            options: [
+                { text: "More than 2 years", value: 24 },
+                { text: "1 to 2 years", value: 18 },
+                { text: "Less than 1 year", value: 6 }
+            ]
+        },
+        {
+            id: "avg_monthly_spend",
+            question: "On average, what is your typical monthly spending using digital methods like UPI or wallets?",
+            options: [
+                { text: "More than ₹25,000", value: 25000 },
+                { text: "₹10,000 to ₹25,000", value: 17500 },
+                { text: "₹5,000 to ₹10,000", value: 7500 },
+                { text: "Less than ₹5,000", value: 2500 }
+            ]
+        },
+        {
+            id: "bonus_instinct_value",
+            question: "Imagine you get an unexpected bonus of ₹5,000. What's your first instinct?",
+            options: [
+                { text: "Save or invest most of it", value: 1.0 },
+                { text: "Pay off an existing debt", value: 0.8 },
+                { text: "Spend it on something I've wanted", value: 0.2 },
+                { text: "Split it between saving and spending", value: 0.6 }
+            ]
+        },
+        {
+            id: "monthly_savings_value",
+            question: "Final question! In a typical month, how much of your income is left after all essential expenses?",
+            options: [
+                { text: "More than 25%", value: 1.0 },
+                { text: "10% to 25%", value: 0.7 },
+                { text: "Less than 10%", value: 0.3 },
+                { text: "Nothing, it's very tight", value: 0.1 }
+            ]
+        }
+    ];
+
+    const bankAnalyticsData = {
+        dailyStats: { labels: ["Aug 08", "Aug 09", "Aug 10", "Aug 11", "Aug 12", "Aug 13", "Today"], approved: [18, 22, 19, 25, 28, 26, 13], rejected: [6, 4, 8, 7, 5, 6, 3] },
+        recentAssessments: [
+            { name: "Priya Sharma", score: 780, status: "Approved", riskFactors: [], userAnswers: [{ question: "Loan Goal?", answer: "Business" }] },
+            { name: "Amit Kumar", score: 550, status: "Rejected", riskFactors: [{reason: 'High Financial Stress'}, {reason: 'Low Stability'}], userAnswers: [{ question: "Loan Goal?", answer: "Luxury" }] },
+            { name: "Sunita Devi", score: 650, status: "Review", riskFactors: [{reason: 'Inconsistent Payments'}], userAnswers: [{ question: "Loan Goal?", answer: "Emergency" }] },
+            { name: "Rahul Verma", score: 820, status: "Approved", riskFactors: [], userAnswers: [{ question: "Loan Goal?", answer: "Education" }] }
+        ],
+        kpis: { totalToday: 16, approvedToday: 13, rejectedToday: 3 }
+    };
+
+    let currentQuestionIndex = 0;
+    let collectedData = new Map();
+    let aditiBot, quizContainer;
+
+    function calculateFinalScore(data) {
+        // 1. Calculate Final Utility Score
+        const on_time_bills = data.get('utility_on_time') || 0;
+        const late_bills = 12 - on_time_bills;
+        const final_utility_score = Math.max(0, 10 - (late_bills * 1.5));
+
+        // 2. Calculate Recharge Consistency Score (using SIM age as a proxy)
+        const sim_age_months = data.get('sim_age_months') || 0;
+        const recharge_consistency_score = sim_age_months > 12 ? 0.9 : 0.6;
+        
+        // 3. Calculate Digital Spend Index
+        const avg_monthly_spend = data.get('avg_monthly_spend') || 0;
+        const digital_spend_index = (avg_monthly_spend / 50000) * 100;
+        
+        // 4. Calculate Stability Score
+        let stability_score = 0;
+        if (sim_age_months >= 24) stability_score = 10;
+        else if (sim_age_months >= 12) stability_score = 6;
+        else stability_score = 2;
+        if (final_utility_score > 8) stability_score = Math.min(10, stability_score + 2);
+
+        // 5. Calculate Psychometric Score
+        const psycho_scores = [
+            data.get('loan_goal_value', 0),
+            data.get('bonus_instinct_value', 0),
+            data.get('monthly_savings_value', 0)
+        ];
+        const psychometric_score = psycho_scores.reduce((a, b) => a + b, 0) / psycho_scores.length;
+
+        // --- MODEL SIMULATION (Weighted sum based on feature importance) ---
+        const weights = { utility: 35, stability: 25, psycho: 20, spend: 15, recharge: 5 };
+        
+        const probability_good = ((final_utility_score / 10) * weights.utility) +
+                                 ((stability_score / 10) * weights.stability) +
+                                 (psychometric_score * weights.psycho) +
+                                 ((digital_spend_index / 100) * weights.spend) +
+                                 (recharge_consistency_score * weights.recharge);
+        
+        const probability_of_default = 1 - (probability_good / 100);
+        const finalScore = Math.floor(300 + (600 * (1 - probability_of_default)));
+        return Math.max(300, Math.min(finalScore, 900));
+    }
+    
+    function startQuiz() {
+        currentQuestionIndex = 0;
+        collectedData.clear();
+        userAnswers = [];
+        riskFactors = [];
+        customerView.innerHTML = <div class="card p-6 rounded-2xl shadow-lg"><div id="aditiBot" class="space-y-4 h-[30rem] overflow-y-auto pr-2"></div><div id="quiz-container" class="mt-6"></div></div>;
+        aditiBot = document.getElementById('aditiBot');
+        quizContainer = document.getElementById('quiz-container');
+        displayQuestion();
+    }
+
+    function displayQuestion() {
+        if (currentQuestionIndex < questions.length) {
+            addBotMessage(questions[currentQuestionIndex].question, true);
+        } else {
+            finishQuiz();
+        }
+    }
+    
+    function showOptions() {
+        const q = questions[currentQuestionIndex];
+        const optionsContainer = document.createElement('div');
+        optionsContainer.className = 'grid grid-cols-1 md:grid-cols-2 gap-3 mt-4';
+        q.options.forEach(option => {
+            const button = document.createElement('button');
+            button.innerHTML = option.text;
+            button.className = 'action-button w-full text-left p-3 bg-white border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50';
+            button.onclick = () => selectOption(option);
+            optionsContainer.appendChild(button);
+        });
+        quizContainer.innerHTML = '';
+        quizContainer.appendChild(optionsContainer);
+    }
+    
+    function selectOption(option) {
+        addUserMessage(option.text);
+        const currentQuestion = questions[currentQuestionIndex];
+        collectedData.set(currentQuestion.id, option.value);
+        userAnswers.push({ question: currentQuestion.question, answer: option.text });
+        
+        // Simplified risk factor identification for the demo
+        if (option.risk) {
+            const isPsycho = ['loan_goal_value', 'bonus_instinct_value', 'monthly_savings_value'].includes(currentQuestion.id);
+            const riskValue = isPsycho ? option.value : (option.value / 100);
+            if (riskValue < 0.4) {
+                 riskFactors.push({ reason: option.risk });
+            }
+        }
+        
+        quizContainer.innerHTML = '';
+        currentQuestionIndex++;
+        displayQuestion();
+    }
+
+    function finishQuiz() {
+        addBotMessage("Thank you! Your assessment is complete. Calculating your new score...", false);
+        const finalScore = calculateFinalScore(collectedData);
+        let status = "Review";
+        if (finalScore >= 750) status = "Approved";
+        if (finalScore < 600) status = "Rejected";
+
+        lastCompletedAssessment = { name: "New Applicant", score: finalScore, riskFactors, userAnswers, status };
+        setTimeout(() => displayCustomerResult(finalScore, riskFactors), 2000);
+    }
+
+    function addBotMessage(text, showOptionsAfter) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'flex justify-start mb-4';
+        messageDiv.innerHTML = <div class="typing-indicator"><span></span><span></span><span></span></div>;
+        aditiBot.appendChild(messageDiv);
+        aditiBot.scrollTop = aditiBot.scrollHeight;
+
+        setTimeout(() => {
+            messageDiv.innerHTML = <div class="chat-bubble-bot p-4 max-w-lg">${text}</div>;
+            aditiBot.scrollTop = aditiBot.scrollHeight;
+            if (showOptionsAfter) {
+                setTimeout(showOptions, 500);
+            }
+        }, 1200);
+    }
+
+    function addUserMessage(text) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'flex justify-end mb-4';
+        messageDiv.innerHTML = <div class="chat-bubble-user p-4 max-w-lg">${text}</div>;
+        aditiBot.appendChild(messageDiv);
+        aditiBot.scrollTop = aditiBot.scrollHeight;
+    }
+
+
+    async function callGemini(prompt) {
+        const apiKey = "API_KEY_HERE"; // Replace with your actual API key
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+        const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+        try {
+            const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (!response.ok) throw new Error(`API call failed with status: ${response.status}`);
+            const result = await response.json();
+            if (result.candidates && result.candidates[0]?.content?.parts[0]) return result.candidates[0].content.parts[0].text;
+            return "Could not get a response from the AI. Please try again.";
+        } catch (error) {
+            console.error("Gemini API Error:", error);
+            return "An error occurred while contacting the AI. Please check your API Key and console for details.";
+        }
+    }
+
+    function loginAsCustomer() {
+        loginView.classList.add('hidden');
+        appView.classList.remove('hidden');
+        customerView.classList.remove('hidden');
+        bankView.classList.add('hidden');
+        headerSubtitle.textContent = "Customer Dashboard";
+        showCustomerDashboard();
+    }
+
+    function loginAsBank() {
+        loginView.classList.add('hidden');
+        appView.classList.remove('hidden');
+        customerView.classList.add('hidden');
+        bankView.classList.remove('hidden');
+        headerSubtitle.textContent = "Loan Officer Dashboard";
+        showBankDashboard();
+    }
+
+    function logout() {
+        appView.classList.add('hidden');
+        loginView.classList.remove('hidden');
+    }
+
+    function createScoreMeter(score, containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        const rotation = ((score - 300) / 600) * 180 - 90;
+        let color = '#ef4444';
+        let riskCategory = 'High Risk';
+        if (score >= 750) { color = '#16a34a'; riskCategory = 'Low Risk'; }
+        else if (score >= 600) { color = '#f59e0b'; riskCategory = 'Medium Risk'; }
+        
+        container.innerHTML = `
+            <div class="relative w-full max-w-[250px] mx-auto" style="padding-bottom: 50%;">
+                <svg class="absolute top-0 left-0 w-full h-full" viewBox="0 0 200 100">
+                    <defs><linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#ef4444"/><stop offset="50%" stop-color="#f59e0b"/><stop offset="100%" stop-color="#16a34a"/></linearGradient></defs>
+                    <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#e5e7eb" stroke-width="12"/>
+                    <g transform="translate(100, 100)"><g class="needle"><path d="M -2.5 -75 L 2.5 -75 L 0 0 Z" fill="#1f2937"/><circle cx="0" cy="0" r="6" fill="#1f2937"/></g></g>
+                    <text x="100" y="80" text-anchor="middle" font-size="40" font-weight="bold" fill="${color}">${score}</text>
+                </svg>
+            </div>
+            <div class="flex justify-between text-xs font-bold w-full max-w-[250px] mx-auto -mt-4">
+                <span class="${riskCategory === 'High Risk' ? 'text-red-600' : 'text-gray-400'}">High Risk</span>
+                <span class="${riskCategory === 'Medium Risk' ? 'text-yellow-600' : 'text-gray-400'}">Medium Risk</span>
+                <span class="${riskCategory === 'Low Risk' ? 'text-green-600' : 'text-gray-400'}">Low Risk</span>
+            </div>`;
+        setTimeout(() => {
+            const needle = container.querySelector('.needle');
+            if (needle) needle.style.transform = `rotate(${rotation}deg)`;
+        }, 100);
+    }
+    
+    function showCustomerDashboard(scoreData = null) {
+        let score = 300;
+        let breakdown = { utility: 0, stability: 0, psycho: 0 };
+        if(scoreData){
+            score = scoreData.score;
+            breakdown = scoreData.breakdown;
+        }
+
+        customerView.innerHTML = `
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
+                <div class="md:col-span-2 card p-6 rounded-2xl shadow-lg text-center">
+                    <h2 class="text-xl font-bold mb-2">My A.D.I.T.I. Score</h2>
+                    <div id="initialScoreMeter"></div>
+                    <button id="startQuizBtn" class="action-button w-full mt-4 bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-blue-700">Begin / Update Assessment</button>
+                </div>
+                <div class="md:col-span-3 card p-6 rounded-2xl shadow-lg">
+                    <h2 class="text-xl font-bold mb-4">Score Breakdown</h2>
+                     <div class="space-y-5">
+                        <div><p class="font-semibold mb-1">Payment Discipline</p><div class="progress-bar h-4"><div id="bar-utility" class="progress-bar-inner bg-green-500" style="width: 0%"></div></div></div>
+                        <div><p class="font-semibold mb-1">Profile Stability</p><div class="progress-bar h-4"><div id="bar-stability" class="progress-bar-inner bg-blue-500" style="width: 0%"></div></div></div>
+                        <div><p class="font-semibold mb-1">Financial Habits (Psychometric)</p><div class="progress-bar h-4"><div id="bar-psycho" class="progress-bar-inner bg-yellow-500" style="width: 0%"></div></div></div>
+                    </div>
+                    <div class="mt-8 pt-6 border-t border-gray-200">
+                        <h3 class="text-lg font-semibold mb-2">💡 Improvement Tips</h3>
+                        <ul class="list-disc list-inside text-gray-600 space-y-1">
+                            <li>Complete your assessment to get a personalized score and action plan.</li>
+                            <li>Paying bills consistently can significantly boost your score.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>`;
+        createScoreMeter(score, 'initialScoreMeter');
+        
+        setTimeout(() => {
+            document.getElementById('bar-utility').style.width = `${breakdown.utility}%`;
+            document.getElementById('bar-stability').style.width = `${breakdown.stability}%`;
+            document.getElementById('bar-psycho').style.width = `${breakdown.psycho}%`;
+        }, 100);
+
+        document.getElementById('startQuizBtn').onclick = startQuiz;
+    }
+
+    function displayCustomerResult(finalScore, riskFactors) {
+        let status;
+        if (finalScore >= 750) status = "Congratulations! Your loan is pre-approved.";
+        else if (finalScore >= 600) status = "Your application is eligible for review.";
+        else status = "We are unable to approve your application at this time.";
+        
+        const on_time_bills = collectedData.get('utility_on_time') || 0;
+        const final_utility_score = Math.max(0, 10 - ((12 - on_time_bills) * 1.5));
+        const sim_age_months = collectedData.get('sim_age_months') || 0;
+        let stability_score = 0;
+        if (sim_age_months >= 24) stability_score = 10;
+        else if (sim_age_months >= 12) stability_score = 6;
+        else stability_score = 2;
+        if (final_utility_score > 8) stability_score = Math.min(10, stability_score + 2);
+        const psycho_scores = [ collectedData.get('loan_goal_value', 0), collectedData.get('bonus_instinct_value', 0), collectedData.get('monthly_savings_value', 0)];
+        const psychometric_score = psycho_scores.reduce((a, b) => a + b, 0) / psycho_scores.length;
+
+        const breakdown = {
+            utility: final_utility_score * 10,
+            stability: stability_score * 10,
+            psycho: psychometric_score * 100
+        };
+
+        customerView.innerHTML = `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="card p-6 rounded-2xl shadow-lg text-center">
+                    <h3 class="text-xl font-bold mb-2">Assessment Complete</h3>
+                    <div id="finalScoreMeter"></div>
+                    <p class="text-lg text-gray-700 font-semibold mt-4">${status}</p>
+                    <button onclick='showCustomerDashboard(${JSON.stringify({score: finalScore, breakdown})})' class="action-button w-full mt-4 bg-gray-200 text-gray-800 font-bold py-3 px-6 rounded-lg shadow-md hover:bg-gray-300">Back to Dashboard</button>
+                </div>
+                <div class="card p-6 rounded-2xl shadow-lg">
+                     <h3 class="text-lg font-semibold mb-2">💡 Your Personalized Action Plan</h3>
+                     <div id="gemini-response" class="text-gray-600 space-y-2 bg-gray-100 p-4 rounded-lg min-h-[150px]">Click the button to generate your plan.</div>
+                     <button id="geminiCustomerBtn" class="action-button gemini-button w-full text-white font-bold py-3 px-6 rounded-lg shadow-md flex items-center justify-center mt-4">
+                        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M10 15a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0-1.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="m10 0-.6.6L10 1.2l.6-.6L10 0Zm4.4 5.6.6-.6L14.4 5l-.6.6Zm-8.8 0-.6.6L5.6 5l.6-.6ZM10 20l.6-.6L10 18.8l-.6.6.6.6Z"/></svg>
+                        Generate AI Action Plan
+                     </button>
+                </div>
+            </div>`;
+        createScoreMeter(finalScore, 'finalScoreMeter');
+        document.getElementById('geminiCustomerBtn').onclick = async (e) => {
+            const btn = e.currentTarget;
+            const responseDiv = document.getElementById('gemini-response');
+            btn.disabled = true;
+            btn.innerHTML = `<div class="spinner"></div> Generating...`;
+            const prompt = `I am a loan applicant with a credit score of ${finalScore}. My main risk factors are: ${riskFactors.map(r=>r.reason).join(', ') || 'None'}. Please provide a few encouraging, simple, and actionable tips for me to improve my financial health and credit score. Speak to me directly.`;
+            const result = await callGemini(prompt);
+            responseDiv.innerHTML = result.replace(/\n/g, '<br>');
+            btn.disabled = false;
+            btn.innerHTML =` <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M10 15a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0-1.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="m10 0-.6.6L10 1.2l.6-.6L10 0Zm4.4 5.6.6-.6L14.4 5l-.6.6Zm-8.8 0-.6.6L5.6 5l.6-.6ZM10 20l.6-.6L10 18.8l-.6.6.6.6Z"/></svg> Generate AI Action Plan`;
+        };
+    }
+    
+    // --- BANK VIEW FUNCTIONS ---
+    function showBankDashboard() {
+        if (lastCompletedAssessment) {
+            bankAnalyticsData.recentAssessments.unshift(lastCompletedAssessment);
+            lastCompletedAssessment = null; 
+        }
+        
+        const kpis = bankAnalyticsData.kpis;
+        const approvalRate = kpis.totalToday > 0 ? ((kpis.approvedToday / kpis.totalToday) * 100).toFixed(0) : 0;
+        const assessmentsHTML = bankAnalyticsData.recentAssessments.map((a, index) => {
+            let statusColor = 'bg-yellow-100 text-yellow-800';
+            if (a.status === 'Approved') statusColor = 'bg-green-100 text-green-800';
+            if (a.status === 'Rejected') statusColor = 'bg-red-100 text-red-800';
+            return `<tr class="hover:bg-gray-50">
+                        <td class="p-4 font-medium text-gray-900">${a.name}</td>
+                        <td class="p-4 text-gray-500">${a.score}</td>
+                        <td class="p-4"><span class="px-2 py-1 text-xs font-semibold rounded-full ${statusColor}">${a.status}</span></td>
+                        <td class="p-4 text-right"><button class="text-blue-600 hover:underline" onclick="showApplicantDetail(${index})">View</button></td>
+                    </tr>`;
+        }).join('');
+
+        bankView.innerHTML = `
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div class="card p-6 rounded-2xl shadow-lg text-center"><h3 class="text-gray-500">Assessments Today</h3><p class="text-4xl font-bold mt-2">${kpis.totalToday}</p></div>
+                <div class="card p-6 rounded-2xl shadow-lg text-center"><h3 class="text-gray-500">Approvals Today</h3><p class="text-4xl font-bold mt-2 text-green-600">${kpis.approvedToday}</p></div>
+                <div class="card p-6 rounded-2xl shadow-lg text-center"><h3 class="text-gray-500">Approval Rate</h3><p class="text-4xl font-bold mt-2 text-blue-600">${approvalRate}%</p></div>
+            </div>
+            <div class="card p-6 rounded-2xl shadow-lg">
+                <h3 class="text-xl font-bold mb-4">Day-wise Activity</h3>
+                <canvas id="activityChart"></canvas>
+            </div>
+            <div class="card p-6 rounded-2xl shadow-lg mt-6">
+                <h3 class="text-xl font-bold mb-4">Recent Assessments</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th class="p-4">Applicant</th><th class="p-4">Score</th><th class="p-4">Status</th><th class="p-4"></th></tr></thead>
+                        <tbody>${assessmentsHTML}</tbody>
+                    </table>
+                </div>
+            </div>`;
+        
+        const ctx = document.getElementById('activityChart').getContext('2d');
+        if(activityChart) activityChart.destroy();
+        activityChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: bankAnalyticsData.dailyStats.labels,
+                datasets: [
+                    { label: 'Approved', data: bankAnalyticsData.dailyStats.approved, backgroundColor: '#22c55e' },
+                    { label: 'Rejected', data: bankAnalyticsData.dailyStats.rejected, backgroundColor: '#ef4444' }
+                ]
+            },
+            options: { scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }, responsive: true }
+        });
+    }
+
+function showApplicantDetail(index) {
+    const applicant = bankAnalyticsData.recentAssessments[index];
+    const riskReasons = applicant.riskFactors.map(rf => <li>${rf.reason}</li>).join('');
+    const answers = applicant.userAnswers.map(ua => <p><span class="font-semibold">${ua.question.split('?')[0]}?</span> ${ua.answer}</p>).join('');
+
+    let recommendationHTML;
+    if (applicant.status === 'Approved') recommendationHTML = <div class="p-3 text-center bg-green-600 text-white font-bold rounded-lg">Approve Loan</div>;
+    else if (applicant.status === 'Rejected') recommendationHTML = <div class="p-3 text-center bg-red-600 text-white font-bold rounded-lg">Reject Loan</div>;
+    else recommendationHTML = <div class="p-3 text-center bg-yellow-500 text-white font-bold rounded-lg">Manual Review Required</div>;
+
+    bankView.innerHTML = `
+        <button onclick="showBankDashboard()" class="action-button mb-6 bg-white text-gray-700 font-bold py-2 px-4 rounded-lg shadow-md border hover:bg-gray-50 flex items-center">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            Back to Dashboard
+        </button>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            <div class="card p-6 rounded-2xl shadow-lg text-center">
+                <h2 class="text-2xl font-bold mb-2">${applicant.name}</h2>
+                <div id="applicantScoreMeter"></div>
+                <div class="mt-4">${recommendationHTML}</div>
+                <div class="text-left mt-6 pt-6 border-t">
+                    <h3 class="text-lg font-semibold mb-2">💡 Explainable Insights (XAI)</h3>
+                    <ul class="list-disc list-inside text-gray-600 space-y-1">${riskReasons || '<li>No significant risk factors identified.</li>'}</ul>
+                </div>
+            </div>
+
+            <div class="card p-6 rounded-2xl shadow-lg">
+                <h3 class="text-lg font-semibold mb-2">🤖 AI-Generated Summary</h3>
+                <div id="gemini-response-banker" class="text-gray-600 space-y-2 bg-gray-100 p-4 rounded-lg min-h-[150px]">Click the button to generate a summary.</div>
+                <button id="geminiBankerBtn" class="action-button gemini-button w-full text-white font-bold py-3 px-6 rounded-lg shadow-md flex items-center justify-center mt-4">
+                   <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M10 15a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0-1.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="m10 0-.6.6L10 1.2l.6-.6L10 0Zm4.4 5.6.6-.6L14.4 5l-.6.6Zm-8.8 0-.6.6L5.6 5l.6-.6ZM10 20l.6-.6L10 18.8l-.6.6.6.6Z"/></svg>
+                   Generate AI Summary
+                </button>
+                <div class="text-left mt-6 pt-6 border-t">
+                     <h3 class="text-lg font-semibold mb-2">📋 Customer's Answers</h3>
+                     <div class="text-gray-600 space-y-2">${answers}</div>
+                </div>
+            </div>
+
+        </div>`;
+        
+    createScoreMeter(applicant.score, 'applicantScoreMeter');
+    document.getElementById('geminiBankerBtn').onclick = async (e) => {
+        const btn = e.currentTarget;
+        const responseDiv = document.getElementById('gemini-response-banker');
+        btn.disabled = true;
+        btn.innerHTML = `<div class="spinner"></div> Generating...`;
+        
+        const prompt = `As a bank loan officer, write a concise, professional one-paragraph executive summary for a loan applicant named ${applicant.name}. Their calculated risk score is ${applicant.score} (out of 900). Their key risk factors are: ${applicant.riskFactors.map(r=>r.reason).join(', ') || 'None'}. Their stated goal for the loan is "${applicant.userAnswers.find(a=>a.question.includes('goal'))?.answer || 'Not specified'}". Analyze these factors and provide a summary of their profile.`;
+        
+        const result = await callGemini(prompt);
+        responseDiv.innerHTML = result.replace(/\n/g, '<br>');
+        btn.disabled = false;
+        
+        btn.innerHTML =`<svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M10 15a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0-1.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="m10 0-.6.6L10 1.2l.6-.6L10 0Zm4.4 5.6.6-.6L14.4 5l-.6.6Zm-8.8 0-.6.6L5.6 5l.6-.6ZM10 20l.6-.6L10 18.8l-.6.6.6.6Z"/></svg> Generate AI Summary`;
+    };
+}
+
+    // --- INITIALIZE ---
+    loginCustomerBtn.onclick = loginAsCustomer;
+    loginBankBtn.onclick = loginAsBank;
+    logoutBtn.onclick = logout;
+</script>
+</body>
+</html>
